@@ -93,6 +93,35 @@ form.query button:disabled { opacity: 0.5; cursor: default; }
 .source { font-size: 12.5px; color: var(--muted); padding: 5px 0; border-top: 1px solid var(--border); word-break: break-all; }
 .source a { color: var(--accent-dim); text-decoration: none; }
 
+/* example chips */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: -14px 0 26px; }
+.chip {
+  background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+  border-radius: 999px; padding: 6px 13px; font-size: 12.5px; cursor: pointer; transition: 0.15s;
+}
+.chip:hover { color: var(--text); border-color: var(--accent-dim); }
+
+/* history */
+.history { margin-bottom: 22px; }
+.history h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 10px; }
+.runs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.run {
+  flex: 0 0 auto; min-width: 200px; max-width: 280px; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 12px; cursor: pointer; transition: 0.15s;
+}
+.run:hover { border-color: var(--accent-dim); }
+.run .q { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 5px; display: flex; gap: 10px; }
+
+/* claims breakdown */
+.claims { margin-top: 10px; }
+.claim { display: grid; grid-template-columns: 18px 1fr; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.claim .mark { font-size: 13px; line-height: 1.4; }
+.claim.ok .mark { color: var(--good); }
+.claim.no .mark { color: var(--warn); }
+.claim .ev { color: var(--muted); font-size: 12px; margin-top: 2px; font-style: italic; }
+.toggle { background: none; border: 0; color: var(--accent-dim); cursor: pointer; font-size: 12.5px; padding: 6px 0; }
+
 .empty { color: var(--muted); font-size: 13.5px; }
 .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent);
   border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
