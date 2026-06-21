@@ -1,0 +1,25 @@
+[project]
+name = "groundwork"
+version = "0.1.0"
+description = "A grounded, injection-resistant, cost-aware AI-for-business research platform: MCP server + research agent + orchestrator over a shared core."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Desmond Sleigh" }]
+dependencies = [
+    "anthropic>=0.40",
+    "mcp>=1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["core", "mcp_server", "research_agent", "orchestrator"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
