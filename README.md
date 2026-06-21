@@ -57,6 +57,8 @@ The lexical grounder over-accepts paraphrased contradictions and overclaims that
 
 Re-run: `python -m evals.run` (writes [`evals/report.md`](evals/report.md)).
 
+A real, web-grounded sample brief produced by the agent is committed at [`reports/sample_research_report.md`](reports/sample_research_report.md) — note its grounding footer ("X of Y claims verified") and how the final-answer grounding pass flags unverified specifics rather than shipping them.
+
 ## Quick start
 
 ```bash

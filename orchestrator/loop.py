@@ -16,8 +16,9 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 
 from core.cost import CostAccounting
-from core.providers import TieredRouter
+from core.providers import MockProvider, TieredRouter
 from core.tracing import Tracer
+from research_agent import grounding
 from research_agent.agent import ResearchAgent
 
 # A worker brief is accepted only if at least this share of its claims grounded.
@@ -45,12 +46,17 @@ class Orchestrator:
         self.tracer.decision("sub-tasks", tasks, role="planner")
         return tasks
 
+    def _grounding_provider(self):
+        """A real model for final-answer grounding; None (skip) when mock."""
+        provider = self.router.for_role("critic")
+        return None if isinstance(provider, MockProvider) else provider
+
     # -- one worker -----------------------------------------------------------
-    def _run_worker(self, task: str) -> dict:
+    def _run_worker(self, task: str):
         agent = ResearchAgent(router=self.router, tracer=self.tracer, cost=self.cost, role="worker")
         result = agent.run(task)
         result["task"] = task
-        return result
+        return result, agent  # agent carries the gathered sources for final grounding
 
     # -- critic ---------------------------------------------------------------
     def critique(self, result: dict) -> dict:
@@ -71,28 +77,48 @@ class Orchestrator:
         tasks = self.plan(question)
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as pool:
-            results = list(pool.map(self._run_worker, tasks))
+            pairs = list(pool.map(self._run_worker, tasks))
 
-        accepted, revised_count, rejected = [], 0, []
-        for result in results:
+        accepted, accepted_agents, revised_count, rejected = [], [], 0, []
+        for result, agent in pairs:
             verdict = self.critique(result)
             if verdict["accepted"]:
                 accepted.append(result)
+                accepted_agents.append(agent)
                 continue
             # One revision pass for a rejected brief.
             self.tracer.decision("revising rejected brief", result["task"], role="critic")
             revised_count += 1
-            revised = self._run_worker(result["task"])
+            revised, ragent = self._run_worker(result["task"])
             rev_verdict = self.critique(revised)
             if rev_verdict["accepted"]:
                 accepted.append(revised)
+                accepted_agents.append(ragent)
             else:
                 rejected.append(revised["task"])
 
         final = self.synthesize(question, accepted)
+
+        # Final-answer grounding: re-verify the synthesized brief against the
+        # union of the accepted workers' sources, so the brief carries its own
+        # "X of Y verified" footer (skipped in mock mode).
+        final_grounding = None
+        gp = self._grounding_provider()
+        if gp and accepted_agents:
+            srcs = {}
+            for ag in accepted_agents:
+                for s in ag.sources:
+                    srcs[s.url] = s
+            if srcs:
+                report = grounding.verify_answer(final, list(srcs.values()), provider=gp)
+                final = grounding.annotate_flagged(final, report)
+                final_grounding = report.to_dict()
+                self.tracer.decision("final grounding", report.summary(), role="critic")
+
         return {
             "question": question,
             "answer": final,
+            "final_grounding": final_grounding,
             "n_tasks": len(tasks),
             "n_accepted": len(accepted),
             "n_revised": revised_count,
@@ -100,7 +126,7 @@ class Orchestrator:
             "cost": self.cost.breakdown(),
             "cost_render": self.cost.render(),
             "trace": self.tracer.to_list(),
-            "worker_results": results,
+            "worker_results": [r for r, _ in pairs],
         }
 
     # -- final synthesis ------------------------------------------------------

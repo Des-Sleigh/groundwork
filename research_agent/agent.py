@@ -29,6 +29,7 @@ class ResearchAgent:
         self.cost = cost or CostAccounting()
         self.max_sources = max_sources
         self.role = role
+        self.sources: list[Source] = []  # last gathered sources (for final grounding)
 
     # -- model call helper: routes by role, records cost + a trace step --------
     def _ask(self, role: str, prompt: str, system: str | None = None, max_tokens: int = 1024) -> str:
@@ -109,6 +110,7 @@ class ResearchAgent:
         self.tracer.thought("run start", question, role=self.role)
         subqs = self.plan(question)
         sources, injection_flags = self.gather(subqs)
+        self.sources = sources
 
         if not sources:
             self.tracer.error("no sources gathered", question, role=self.role)

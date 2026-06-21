@@ -43,10 +43,25 @@ def main(argv: list[str] | None = None) -> int:
     reports.mkdir(exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-    md = ["# Research brief\n", f"**Question:** {question}\n", result["answer"], "",
-          "## Run metadata", f"- Sub-tasks: {result['n_tasks']}, accepted: {result['n_accepted']}, "
-          f"revised: {result['n_revised']}, rejected: {result['rejected_tasks']}",
-          "", "### Cost by role", "```", result["cost_render"], "```"]
+    # Deduplicated source pool actually consulted across workers.
+    seen, sources = set(), []
+    for w in result.get("worker_results", []):
+        for s in w.get("sources", []):
+            if s.get("url") and s["url"] not in seen:
+                seen.add(s["url"])
+                sources.append(s)
+
+    md = ["# Research brief\n", f"**Question:** {question}\n", result["answer"], ""]
+    fg = result.get("final_grounding")
+    if fg:
+        md += ["## Grounding", f"- {fg['summary']} (final synthesized answer, "
+               "re-verified against the source pool)."]
+    if sources:
+        md += ["", "## Sources consulted", ""]
+        md += [f"{i}. [{s.get('title') or s['url']}]({s['url']})" for i, s in enumerate(sources, 1)]
+    md += ["", "## Run metadata", f"- Sub-tasks: {result['n_tasks']}, accepted: {result['n_accepted']}, "
+           f"revised: {result['n_revised']}, rejected: {result['rejected_tasks']}",
+           "", "### Cost by role", "```", result["cost_render"], "```"]
     brief_path = reports / f"research_brief_{stamp}.md"
     brief_path.write_text("\n".join(md))
     (reports / f"trace_{stamp}.json").write_text(json.dumps(result["trace"], indent=2, default=str))
