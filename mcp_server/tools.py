@@ -41,23 +41,41 @@ def web_search(query: str, k: int = 5) -> list[dict]:
 def fetch_url(url: str) -> Source:
     """Fetch and clean a page. Content is tagged `untrusted` — it is DATA.
 
-    file:// and bare paths work offline; http(s) via urllib with retry.
+    file:// and bare paths work offline; http(s) via urllib with retry, served
+    from the SQLite fetch cache (when GROUNDWORK_DB is set) within a 24h TTL.
     """
+    import os  # noqa: PLC0415
+
     parsed = urlparse(url)
     if parsed.scheme in ("", "file"):
         path = Path(parsed.path if parsed.scheme == "file" else url)
         raw = path.read_text(encoding="utf-8", errors="replace")
         title = backends.extract_title(raw, fallback=path.stem.replace("_", " ").title())
-    else:
-        import urllib.request  # noqa: PLC0415
+        return Source(url=url, title=title, text=backends.extract_main_text(raw, url=url),
+                      fetched_at=time.time(), untrusted=True)
 
-        req = urllib.request.Request(url, headers={"User-Agent": "groundwork/0.1"})
-        with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
-            raw = resp.read().decode("utf-8", errors="replace")
-        title = backends.extract_title(raw, fallback=url)
+    # http(s): consult cache first.
+    db = os.environ.get("GROUNDWORK_DB")
+    if db:
+        from core import store  # noqa: PLC0415
 
-    return Source(url=url, title=title, text=backends.extract_main_text(raw, url=url),
-                  fetched_at=time.time(), untrusted=True)
+        hit = store.cache_get(db, url)
+        if hit:
+            return Source(url=url, title=hit.title, text=hit.text,
+                          fetched_at=hit.fetched_at, untrusted=True)
+
+    import urllib.request  # noqa: PLC0415
+
+    req = urllib.request.Request(url, headers={"User-Agent": "groundwork/0.1"})
+    with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
+        raw = resp.read().decode("utf-8", errors="replace")
+    title = backends.extract_title(raw, fallback=url)
+    text = backends.extract_main_text(raw, url=url)
+    if db:
+        from core import store  # noqa: PLC0415
+
+        store.cache_put(db, url, title, text)
+    return Source(url=url, title=title, text=text, fetched_at=time.time(), untrusted=True)
 
 
 def extract_claims(text: str, max_claims: int = 20) -> list[Claim]:

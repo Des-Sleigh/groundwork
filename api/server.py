@@ -25,9 +25,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from core import store
 from core.providers import MockProvider, TieredRouter
 from core.tracing import Tracer
 from orchestrator.loop import Orchestrator
+
+# Persist runs + cache fetches in one DB. Export the path so tools.fetch_url
+# (in worker threads) uses the same cache.
+DB = store.default_db_path()
+os.environ.setdefault("GROUNDWORK_DB", DB)
 
 app = FastAPI(title="Groundwork", version="0.1.0")
 app.add_middleware(
@@ -59,6 +65,21 @@ def health() -> dict:
     return {"status": "ok", "mode": "mock" if _is_mock() else "real"}
 
 
+@app.get("/runs")
+def runs(limit: int = 50) -> dict:
+    return {"runs": store.list_runs(DB, limit=limit)}
+
+
+@app.get("/runs/{run_id}")
+def run_detail(run_id: int):
+    from fastapi import HTTPException  # noqa: PLC0415
+
+    run = store.get_run(DB, run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="run not found")
+    return run
+
+
 def _sse(event: dict) -> str:
     return f"data: {json.dumps(event, default=str)}\n\n"
 
@@ -73,6 +94,11 @@ async def research(req: ResearchRequest):
         try:
             orch = Orchestrator(router=_build_router(), tracer=tracer)
             result = orch.run(req.question)
+            try:
+                run_id = store.save_run(DB, req.question, "mock" if _is_mock() else "real", result)
+                result["run_id"] = run_id
+            except Exception:  # noqa: BLE001 — persistence is best-effort
+                pass
             q.put({"type": "result", "result": result})
         except Exception as e:  # noqa: BLE001 — surface to the client
             q.put({"type": "error", "message": str(e)})
