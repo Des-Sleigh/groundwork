@@ -23,7 +23,7 @@ These are the failure modes most agent demos ignore. Groundwork is built around 
 
 ## Architecture
 
-Three layers over a shared core, built **MCP → agent → orchestrator** — each runnable standalone. Full diagram in [docs/architecture.md](docs/architecture.md).
+Three layers over a shared core, built **MCP → agent → orchestrator** — each runnable standalone. Full diagram in [docs/architecture.md](docs/architecture.md); the decisions, trade-offs, and known limitations behind each layer are in **[docs/DESIGN.md](docs/DESIGN.md)**.
 
 ```
 core/   providers (+ tiered routing) · tracing · cost · types
