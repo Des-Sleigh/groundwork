@@ -47,11 +47,13 @@ evals/ labeled datasets + scorer for grounding accuracy & injection resistance
 
 Groundwork scores its own differentiators on labeled datasets ([`evals/`](evals/)). The lexical grounder and the regex injection detector need **no API key**, so these numbers are reproducible — CI runs them on every push:
 
-| Capability | Method | Precision | Recall | F1 | Accuracy |
-|---|---|---:|---:|---:|---:|
-| Grounding | lexical heuristic | 0.88 | 1.00 | 0.93 | 0.92 |
-| Grounding | LLM entailment | _set a key to measure (higher)_ | | | |
-| Injection detection | regex pattern scan | 1.00 | 1.00 | 1.00 | 1.00 |
+| Capability | Method | n | Precision | Recall | F1 | Accuracy |
+|---|---|---:|---:|---:|---:|---:|
+| Grounding | lexical heuristic | 30 | 0.86 | 1.00 | 0.92 | 0.90 |
+| Grounding | LLM entailment | 30 | _set a key to measure (higher)_ | | | |
+| Injection detection | regex pattern scan | 20 | 1.00 | 1.00 | 1.00 | 1.00 |
+
+The lexical grounder's precision (0.86) is the tell: it over-accepts paraphrased contradictions and overclaims that share vocabulary with a source — exactly the cases the LLM entailment path is built to catch.
 
 Re-run: `python -m evals.run` (writes [`evals/report.md`](evals/report.md)).
 

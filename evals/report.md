@@ -6,13 +6,13 @@ Measures Groundwork's grounding accuracy and injection-detection on labeled data
 
 | Method | n | Precision | Recall | F1 | Accuracy |
 |---|---:|---:|---:|---:|---:|
-| lexical heuristic | 12 | 0.88 | 1.00 | 0.93 | 0.92 |
+| lexical heuristic | 30 | 0.86 | 1.00 | 0.92 | 0.90 |
 | LLM entailment | — | — | — | — | _set ANTHROPIC_API_KEY to measure_ |
 
 ## Injection detection (manipulation attempt flagged?)
 
 | Method | n | Precision | Recall | F1 | Accuracy |
 |---|---:|---:|---:|---:|---:|
-| regex pattern scan | 8 | 1.00 | 1.00 | 1.00 | 1.00 |
+| regex pattern scan | 20 | 1.00 | 1.00 | 1.00 | 1.00 |
 
 > Datasets: `evals/datasets/`. Re-run with `python -m evals.run`.
