@@ -37,6 +37,13 @@ class ResearchAgent:
         self.cost.add(role, gen.model, gen.input_tokens, gen.output_tokens)
         return gen.text
 
+    def _grounding_provider(self):
+        """Use a real model for entailment grounding; None (lexical) when mock."""
+        from core.providers import MockProvider  # noqa: PLC0415
+
+        provider = self.router.for_role("critic")
+        return None if isinstance(provider, MockProvider) else provider
+
     # -- plan -----------------------------------------------------------------
     def plan(self, question: str) -> list[str]:
         self.tracer.thought("planning sub-questions", question, role=self.role)
@@ -113,7 +120,7 @@ class ResearchAgent:
             }
 
         answer = self.synthesize(question, sources)
-        report = grounding.verify_answer(answer, sources)
+        report = grounding.verify_answer(answer, sources, provider=self._grounding_provider())
         self.tracer.decision("grounding", report.summary(), role=self.role)
         annotated = grounding.annotate_flagged(answer, report)
 
