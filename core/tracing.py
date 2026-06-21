@@ -14,12 +14,17 @@ from .types import TraceStep
 
 
 class Tracer:
-    """Thread-safe append-only log of TraceSteps (workers run in parallel)."""
+    """Thread-safe append-only log of TraceSteps (workers run in parallel).
 
-    def __init__(self, echo: bool = False):
+    `sink`, if given, is called with each step's dict as it's recorded — used by
+    the API to stream the trajectory live over SSE.
+    """
+
+    def __init__(self, echo: bool = False, sink=None):
         self._steps: list[TraceStep] = []
         self._lock = threading.Lock()
         self.echo = echo
+        self.sink = sink
 
     def record(self, kind: str, label: str, detail=None, role: str = "agent") -> TraceStep:
         step = TraceStep(kind=kind, label=label, detail=detail, role=role)
@@ -27,6 +32,11 @@ class Tracer:
             self._steps.append(step)
         if self.echo:
             print(f"[{role}/{kind}] {label}")
+        if self.sink:
+            try:
+                self.sink(step.to_dict())
+            except Exception:  # noqa: BLE001 — never let a sink error break a run
+                pass
         return step
 
     # Convenience wrappers.

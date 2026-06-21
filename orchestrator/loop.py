@@ -25,9 +25,10 @@ GROUNDING_ACCEPT_RATIO = 0.5
 
 
 class Orchestrator:
-    def __init__(self, router: TieredRouter | None = None, max_workers: int = 4):
+    def __init__(self, router: TieredRouter | None = None, max_workers: int = 4,
+                 tracer: Tracer | None = None):
         self.router = router or TieredRouter()
-        self.tracer = Tracer()
+        self.tracer = tracer or Tracer()
         self.cost = CostAccounting()
         self.max_workers = max_workers
 
