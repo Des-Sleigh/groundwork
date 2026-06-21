@@ -59,6 +59,18 @@ Re-run: `python -m evals.run` (writes [`evals/report.md`](evals/report.md)).
 
 A real, web-grounded sample brief produced by the agent is committed at [`reports/sample_research_report.md`](reports/sample_research_report.md) — note its grounding footer ("X of Y claims verified") and how the final-answer grounding pass flags unverified specifics rather than shipping them.
 
+### vs. naive RAG
+
+The point of grounding, as a number ([`benchmark/report.md`](benchmark/report.md), `python -m benchmark.run`):
+
+| Approach | Hallucinations shipped ↓ | Valid claims kept ↑ |
+|---|---:|---:|
+| Naive RAG (no grounding) | **100%** (12/12) | 100% |
+| Groundwork — lexical grounder | 25% (3/12) | 100% |
+| Groundwork — LLM entailment | **0%** (0/12) | 94% |
+
+A naive retrieve-then-synthesize agent ships every unsupported claim as if it were true. Groundwork's grounding filter is the difference between confident-but-wrong and trustworthy.
+
 ## Quick start
 
 ```bash
