@@ -93,7 +93,7 @@ python research.py "How are mid-market logistics firms using AI for demand forec
 # 4) MCP server for an MCP client (Claude Desktop): python -m mcp_server.server
 ```
 
-Deploy (FastAPI → Render, Next.js → Vercel): [docs/DEPLOY.md](docs/DEPLOY.md).
+Deploy (FastAPI → Render, Next.js → Vercel): [docs/DEPLOY.md](docs/DEPLOY.md). The dashboard supports **bring-your-own-key** — deploy the backend with no server key and visitors paste their own (sent per-request via `X-Anthropic-Key`, never stored), so a public demo is free and abuse-safe; with no key it runs in offline mock mode.
 
 ## Tests & CI
 

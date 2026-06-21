@@ -26,7 +26,10 @@ client = TestClient(app)
 def test_health_reports_mock_mode():
     r = client.get("/health")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok", "mode": "mock"}
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["mode"] == "mock"
+    assert body["byok"] is True  # no server key in tests -> demo would be BYOK
 
 
 def test_research_streams_steps_and_result():

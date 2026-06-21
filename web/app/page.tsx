@@ -25,6 +25,7 @@ const EXAMPLES = [
 
 export default function Home() {
   const [question, setQuestion] = useState(EXAMPLES[0]);
+  const [apiKey, setApiKey] = useState("");
   const [running, setRunning] = useState(false);
   const [mode, setMode] = useState<string>("");
   const [steps, setSteps] = useState<Step[]>([]);
@@ -62,8 +63,10 @@ export default function Home() {
     setRunning(true); setSteps([]); setResult(null); setError(""); setMode(""); setShowClaims(false);
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (apiKey.trim()) headers["X-Anthropic-Key"] = apiKey.trim();
       const resp = await fetch(`${API}/research`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers,
         body: JSON.stringify({ question }),
       });
       if (!resp.body) throw new Error("No response stream");
@@ -124,6 +127,11 @@ export default function Home() {
         {EXAMPLES.map((ex) => (
           <button key={ex} className="chip" type="button" onClick={() => setQuestion(ex)}>{ex.length > 54 ? ex.slice(0, 52) + "…" : ex}</button>
         ))}
+      </div>
+      <div className="byok">
+        <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+          placeholder="Optional: paste an Anthropic API key to run live (sk-ant-…)" autoComplete="off" />
+        <span className="byok-note">Used only for this request — never stored or logged. Leave empty for the offline demo.</span>
       </div>
 
       {history.length > 0 && (

@@ -19,8 +19,9 @@ import json
 import os
 import queue
 import threading
+from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -48,21 +49,27 @@ class ResearchRequest(BaseModel):
     question: str
 
 
-def _is_mock() -> bool:
-    return os.environ.get("GROUNDWORK_MOCK") == "1" or not os.environ.get("ANTHROPIC_API_KEY")
+def _mode(provided_key: str | None = None) -> str:
+    """real if a usable Anthropic key exists (server env or per-request BYOK), else mock."""
+    if os.environ.get("GROUNDWORK_MOCK") == "1":
+        return "mock"
+    if provided_key or os.environ.get("ANTHROPIC_API_KEY"):
+        return "real"
+    return "mock"
 
 
-def _build_router() -> TieredRouter:
-    if _is_mock():
+def _build_router(provided_key: str | None = None) -> TieredRouter:
+    if _mode(provided_key) == "mock":
         from run_demo import mock_responder  # noqa: PLC0415
 
         return TieredRouter(provider_factory=lambda m: MockProvider(m, responder=mock_responder))
-    return TieredRouter()
+    # BYOK: provided_key (if any) is used for this request only; never stored/logged.
+    return TieredRouter(api_key=provided_key or None)
 
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "mode": "mock" if _is_mock() else "real"}
+    return {"status": "ok", "mode": _mode(), "byok": not os.environ.get("ANTHROPIC_API_KEY")}
 
 
 @app.get("/runs")
@@ -85,17 +92,19 @@ def _sse(event: dict) -> str:
 
 
 @app.post("/research")
-async def research(req: ResearchRequest):
+async def research(req: ResearchRequest,
+                   anthropic_key: Optional[str] = Header(default=None, alias="X-Anthropic-Key")):
     q: "queue.Queue[dict]" = queue.Queue()
     sentinel = {"type": "__done__"}
+    mode = _mode(anthropic_key)
 
     def run() -> None:
         tracer = Tracer(sink=lambda step: q.put({"type": "step", **step}))
         try:
-            orch = Orchestrator(router=_build_router(), tracer=tracer)
+            orch = Orchestrator(router=_build_router(anthropic_key), tracer=tracer)
             result = orch.run(req.question)
             try:
-                run_id = store.save_run(DB, req.question, "mock" if _is_mock() else "real", result)
+                run_id = store.save_run(DB, req.question, mode, result)
                 result["run_id"] = run_id
             except Exception:  # noqa: BLE001 — persistence is best-effort
                 pass
@@ -108,8 +117,7 @@ async def research(req: ResearchRequest):
     async def stream():
         loop = asyncio.get_event_loop()
         threading.Thread(target=run, daemon=True).start()
-        yield _sse({"type": "start", "question": req.question,
-                    "mode": "mock" if _is_mock() else "real"})
+        yield _sse({"type": "start", "question": req.question, "mode": mode})
         while True:
             event = await loop.run_in_executor(None, q.get)
             if event.get("type") == "__done__":

@@ -47,8 +47,18 @@ cd web && npm run dev                                    # dashboard
 The dashboard shows a "offline demo" badge in mock mode and "live models" when
 the backend has a key.
 
-## Cost note
+## Cost note & BYOK
 
-A public live demo calls Claude (and a search API) on every request. If you
-expose one, add rate limiting / a spend cap, or keep it behind the recorded
-walkthrough as the default public artifact.
+A public live demo calls Claude on every request. Two safe ways to expose one:
+
+- **Bring-your-own-key (recommended for a public demo):** deploy the backend
+  **without** `ANTHROPIC_API_KEY`. Visitors paste their own key in the dashboard;
+  it's sent per request as the `X-Anthropic-Key` header, used only for that
+  request, and never stored or logged. With no visitor key the demo runs in
+  offline mock mode. Zero cost and zero abuse surface for you. The dashboard
+  shows a "live models" / "offline demo" badge accordingly.
+- **Your key + caps:** set `ANTHROPIC_API_KEY` on the backend and add rate
+  limiting / a spend cap. Smoother UX, but you pay for usage.
+
+Either way, set a server `TAVILY_API_KEY` to enable live web search (BYOK covers
+the model key; search stays server-configured).

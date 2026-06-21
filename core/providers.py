@@ -29,16 +29,17 @@ class Provider:
 class AnthropicProvider(Provider):
     """Anthropic Messages API. SDK imported lazily so offline code/tests run."""
 
-    def __init__(self, model: str):
+    def __init__(self, model: str, api_key: str | None = None):
         self.name = model
         self.model = model
+        self.api_key = api_key  # per-request override (BYOK); None -> env
         self._client = None
 
     def _client_lazy(self):
         if self._client is None:
             import anthropic  # noqa: PLC0415
 
-            self._client = anthropic.Anthropic()
+            self._client = anthropic.Anthropic(api_key=self.api_key) if self.api_key else anthropic.Anthropic()
         return self._client
 
     def generate(self, prompt: str, system: str | None = None, max_tokens: int = 1024) -> Generation:
@@ -82,18 +83,18 @@ DEFAULT_TIERS = {
 class TieredRouter:
     """Resolves a role to a provider, caching one provider per model."""
 
-    def __init__(self, tiers: dict | None = None, provider_factory=None):
+    def __init__(self, tiers: dict | None = None, provider_factory=None, api_key: str | None = None):
         self.tiers = dict(DEFAULT_TIERS)
         if tiers:
             self.tiers.update(tiers)
+        self.api_key = api_key  # BYOK: passed to Anthropic providers per request
         self._factory = provider_factory or self._default_factory
         self._cache: dict[str, Provider] = {}
 
-    @staticmethod
-    def _default_factory(model: str) -> Provider:
+    def _default_factory(self, model: str) -> Provider:
         if model.startswith("mock"):
             return MockProvider(model)
-        return AnthropicProvider(model)
+        return AnthropicProvider(model, api_key=self.api_key)
 
     def model_for(self, role: str) -> str:
         return self.tiers.get(role, self.tiers["agent"])

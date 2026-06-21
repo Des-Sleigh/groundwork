@@ -101,6 +101,15 @@ form.query button:disabled { opacity: 0.5; cursor: default; }
 }
 .chip:hover { color: var(--text); border-color: var(--accent-dim); }
 
+/* bring-your-own-key */
+.byok { margin: -14px 0 26px; }
+.byok input {
+  width: 100%; background: var(--panel); border: 1px solid var(--border); color: var(--text);
+  border-radius: 9px; padding: 9px 13px; font-size: 13px; font-family: var(--mono); outline: none;
+}
+.byok input:focus { border-color: var(--accent-dim); }
+.byok-note { display: block; color: var(--muted); font-size: 11.5px; margin-top: 5px; }
+
 /* history */
 .history { margin-bottom: 22px; }
 .history h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 10px; }
