@@ -1,6 +1,8 @@
 # Groundwork
 
 [![CI](https://github.com/Des-Sleigh/groundwork/actions/workflows/ci.yml/badge.svg)](https://github.com/Des-Sleigh/groundwork/actions/workflows/ci.yml)
+![coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)
+![python](https://img.shields.io/badge/python-3.9%2B-blue)
 
 **A grounded, injection-resistant, cost-aware AI research agent — built to prove an agent can be *trusted*, not just demoed.**
 
@@ -99,7 +101,7 @@ Deploy (FastAPI → Render, Next.js → Vercel): [docs/DEPLOY.md](docs/DEPLOY.md
 pip install -e ".[dev]" && pytest -q && ruff check . --select E,F,I,W --ignore E501
 ```
 
-24 tests, all offline (no key / network): injection canaries detected *and* not obeyed; LLM-grounding JSON parsing + entailment verdicts; supported claims ground while fabricated ones are flagged; the orchestrator critic rejects an ungrounded brief, revises, and accounts cost by role; eval-quality regression guards. GitHub Actions runs lint + tests + the offline evals on every push.
+35 tests at ~77% coverage, all offline (no key / network): injection canaries detected *and* not obeyed; LLM-grounding JSON parsing + entailment verdicts; supported claims ground while fabricated ones are flagged; the orchestrator critic rejects an ungrounded brief, revises, and accounts cost by role; **FastAPI endpoints exercised end-to-end** (SSE research stream + run history) via `TestClient` in mock mode; eval- and benchmark-quality regression guards. GitHub Actions runs lint + tests-with-coverage + the offline evals and benchmark on every push.
 
 ## Safety
 

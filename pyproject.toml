@@ -17,7 +17,7 @@ dependencies = [
 # the local fixture corpus — so dev/CI run with zero keys and zero extras.
 real = ["trafilatura>=1.8", "beautifulsoup4>=4.12"]
 api = ["fastapi>=0.110", "uvicorn>=0.29", "sse-starlette>=2.0", "python-dotenv>=1.0"]
-dev = ["pytest>=7.0", "ruff>=0.5"]
+dev = ["pytest>=7.0", "ruff>=0.5", "pytest-cov>=4.0"]
 
 [build-system]
 requires = ["setuptools>=68"]

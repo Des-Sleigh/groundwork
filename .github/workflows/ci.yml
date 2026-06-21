@@ -16,10 +16,12 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev,api]"
       - name: Lint (ruff)
         run: ruff check . --select E,F,I,W --ignore E501
-      - name: Test (pytest)
-        run: pytest -q
-      - name: Evals (offline, reproducible numbers)
-        run: python -m evals.run
+      - name: Test (pytest + coverage)
+        run: pytest -q --cov=core --cov=mcp_server --cov=research_agent --cov=orchestrator --cov=api --cov=evals --cov=benchmark --cov-report=term-missing
+      - name: Evals + benchmark (offline, reproducible numbers)
+        run: |
+          python -m evals.run
+          python -m benchmark.run
