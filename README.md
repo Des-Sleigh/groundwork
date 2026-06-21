@@ -1,82 +1,96 @@
 # Groundwork
 
-**A grounded, injection-resistant, cost-aware platform for AI-for-business research — built to prove an agent can be *trusted*, not just demoed.**
+[![CI](https://github.com/Des-Sleigh/groundwork/actions/workflows/ci.yml/badge.svg)](https://github.com/Des-Sleigh/groundwork/actions/workflows/ci.yml)
 
-Groundwork researches how businesses adopt and apply AI (use cases, vendor landscape, ROI evidence, implementation patterns, risks) and returns an answer where **every claim traces to a retrieved source**, ungrounded statements are flagged rather than shipped, and fetched web content is treated as untrusted data — not instructions.
+**A grounded, injection-resistant, cost-aware AI research agent — built to prove an agent can be *trusted*, not just demoed.**
 
-It's three layers over a shared core, built **MCP → agent → orchestrator**. Each layer stands alone as a working demo.
+Groundwork researches how businesses adopt and apply AI (use cases, vendor landscape, ROI evidence, implementation patterns, risks) and returns an answer where **every claim is verified against a retrieved source**, ungrounded statements are flagged rather than shipped, and fetched web content is treated as untrusted data — not instructions. You can watch the whole trajectory — plan → gather → ground → critique → synthesize — stream live in a dashboard.
 
-```
-core/  →  Layer 1: MCP server  →  Layer 2: research agent  →  Layer 3: orchestrator
-```
+![Groundwork dashboard](docs/dashboard.png)
 
-## Why it exists
+> _No screenshot yet? See [docs/DEMO-TODO.md](docs/DEMO-TODO.md) — one command brings the dashboard up._
 
-Most agent demos are happy-path: they sound authoritative and cite nothing checkable, and they'll cheerfully follow an instruction hidden inside a web page. Groundwork is the opposite — it's built around the failure modes:
+## What makes it different
 
-| Differentiator | How it shows up in the code |
+These are the failure modes most agent demos ignore. Groundwork is built around them, and **measures itself** on them (see [Evaluation](#evaluation)):
+
+| Differentiator | Where it lives |
 |---|---|
-| **Grounding verification** | Every synthesized claim is checked against the retrieved sources; the answer ships with an "X of Y claims verified" report and flags the rest. (`research_agent/grounding.py`) |
-| **Prompt-injection resistance** | Fetched content is wrapped as data and scanned for instruction-like patterns; injections are flagged and ignored, never obeyed. Proven by a benign red-team suite. (`research_agent/defenses.py`, `redteam/`) |
-| **Cost-aware tiered routing** | Haiku-class workers do the bulk research; Sonnet-class planner/critic supervise. One router maps role → model. (`core/providers.py`) |
-| **Observability** | Full step/trajectory tracing + per-run token/cost accounting, broken down by role. (`core/tracing.py`, `core/cost.py`) |
+| **Grounding verification (real entailment)** | After synthesis, an LLM checks every claim for *entailment* against the retrieved sources; the answer ships with an "X of Y claims verified" report and flags the rest. Lexical fallback runs with no key. (`research_agent/llm_grounding.py`, `grounding.py`) |
+| **Prompt-injection resistance** | Fetched content is wrapped as data and scanned for manipulation patterns; injections are flagged and ignored, never obeyed. Proven by a benign red-team suite. (`research_agent/defenses.py`, `redteam/`) |
+| **Cost-aware tiered routing** | Haiku-class workers do the bulk research; Sonnet-class planner/critic supervise. One router maps role → model; cost is accounted by role. (`core/providers.py`, `core/cost.py`) |
+| **Observability** | Full step/trajectory tracing, streamed live to the dashboard over SSE, plus per-run token/cost accounting. (`core/tracing.py`, `api/server.py`) |
 
-## The three layers
+## Architecture
 
-**Layer 1 — MCP server** (`mcp_server/`). A spec-compliant server on the official MCP Python SDK exposing `web_search`, `fetch_url` (with provenance; content tagged untrusted), `extract_claims`, and `check_grounding`. The tool logic is plain functions, so the same code backs both the MCP server and the in-process agent. Connect it to Claude Desktop to give it grounded web research (config snippet in `mcp_server/server.py`).
+Three layers over a shared core, built **MCP → agent → orchestrator** — each runnable standalone. Full diagram in [docs/architecture.md](docs/architecture.md).
 
-**Layer 2 — Grounded research agent** (`research_agent/`). Plans sub-questions → gathers sources via the Layer-1 tools → synthesizes an answer with inline `[n]` citations → verifies every claim against the sources and emits a grounding report. Injection defenses, tool-error recovery, tracing, and cost accounting throughout.
+```
+core/   providers (+ tiered routing) · tracing · cost · types
+  │
+  ├─ Layer 1  mcp_server/   spec-compliant MCP server: web_search, fetch_url
+  │                         (+provenance, untrusted), extract_claims, check_grounding
+  ├─ Layer 2  research_agent/  plan → gather → synthesize (cited) → verify grounding
+  │                            + injection defenses, tracing, cost
+  └─ Layer 3  orchestrator/   planner → workers (parallel) → critic (grounding +
+                              injection checks → retry) → synthesize
 
-**Layer 3 — Orchestrator** (`orchestrator/`). Planner (Sonnet) decomposes the question → workers (Haiku, **in parallel**) each research a sub-task via the Layer-2 agent → critic (Sonnet) runs the grounding + injection checks and **sends a failing brief back for one revision** → final synthesis. Prints a cost breakdown by role.
+api/  FastAPI: POST /research streams the trajectory live (SSE)
+web/  Next.js dashboard that renders the stream
+evals/ labeled datasets + scorer for grounding accuracy & injection resistance
+```
 
-See [docs/architecture.md](docs/architecture.md) for the full diagram.
+- **Real web** via Tavily when `TAVILY_API_KEY` is set; **offline fixture corpus** otherwise — so dev, CI, and the demo all run with zero keys.
+- **Article extraction**: trafilatura → BeautifulSoup → regex, best available.
+
+## Evaluation
+
+Groundwork scores its own differentiators on labeled datasets ([`evals/`](evals/)). The lexical grounder and the regex injection detector need **no API key**, so these numbers are reproducible — CI runs them on every push:
+
+| Capability | Method | Precision | Recall | F1 | Accuracy |
+|---|---|---:|---:|---:|---:|
+| Grounding | lexical heuristic | 0.88 | 1.00 | 0.93 | 0.92 |
+| Grounding | LLM entailment | _set a key to measure (higher)_ | | | |
+| Injection detection | regex pattern scan | 1.00 | 1.00 | 1.00 | 1.00 |
+
+Re-run: `python -m evals.run` (writes [`evals/report.md`](evals/report.md)).
 
 ## Quick start
 
 ```bash
-pip install -e .          # or: pip install anthropic mcp
+pip install -e .                  # core; add ".[real,api]" for live web + the API
 
-# Offline end-to-end demo — no API key. Shows the full planner→workers→critic
-# loop, grounding report, injection flags, and per-role cost breakdown over a
-# fixture corpus with mock models:
+# 1) Offline three-layer demo — no key. Plan→workers→critic loop, grounding,
+#    injection flags, per-role cost, over a fixture corpus with mock models:
 python run_demo.py
 
-# Run the MCP server (Layer 1) for an MCP client like Claude Desktop:
-python -m mcp_server.server
+# 2) The dashboard (offline mock mode):
+GROUNDWORK_MOCK=1 uvicorn api.server:app --port 8000      # backend
+cd web && npm install && NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
+
+# 3) A REAL run (live models + web):
+export ANTHROPIC_API_KEY=sk-ant-...   ;  export TAVILY_API_KEY=tvly-...   # optional
+python research.py "How are mid-market logistics firms using AI for demand forecasting?"
+
+# 4) MCP server for an MCP client (Claude Desktop): python -m mcp_server.server
 ```
 
-For a **real run** (live models + a real research brief), set `ANTHROPIC_API_KEY` and use the default `TieredRouter` — see [reports/SAMPLE-REPORT-TODO.md](reports/SAMPLE-REPORT-TODO.md).
+Deploy (FastAPI → Render, Next.js → Vercel): [docs/DEPLOY.md](docs/DEPLOY.md).
 
-## Layout
-
-```
-groundwork/
-├── core/                  # shared: providers (+ tiered routing), tracing, cost, types
-├── mcp_server/            # LAYER 1: server.py (FastMCP) + tools.py (the 4 tools)
-├── research_agent/        # LAYER 2: agent.py, grounding.py, defenses.py
-├── orchestrator/          # LAYER 3: loop.py (planner → workers → critic → synth)
-├── redteam/injection_pages/   # BENIGN injection canary pages for the test suite
-├── corpus/                # fixture documents for the offline demo (clearly illustrative)
-├── docs/architecture.md
-├── reports/               # sample_research_report.md (real run — see TODO)
-├── run_demo.py            # offline three-layer demo
-└── tests/                 # grounding, injection defenses, orchestrator retry + cost
-```
-
-## Tests
+## Tests & CI
 
 ```bash
-pip install pytest && pytest -q
+pip install -e ".[dev]" && pytest -q && ruff check . --select E,F,I,W --ignore E501
 ```
 
-Covers the three differentiators with **no API key or network**: injection canaries are detected *and* not obeyed (with a clean-page false-positive check), supported claims ground while fabricated ones are flagged, and the orchestrator's critic rejects an ungrounded brief, triggers a revision, and accounts cost by role.
+24 tests, all offline (no key / network): injection canaries detected *and* not obeyed; LLM-grounding JSON parsing + entailment verdicts; supported claims ground while fabricated ones are flagged; the orchestrator critic rejects an ungrounded brief, revises, and accounts cost by role; eval-quality regression guards. GitHub Actions runs lint + tests + the offline evals on every push.
 
 ## Safety
 
-Everything in `redteam/injection_pages/` is a **benign canary** — a harmless obedience probe (e.g. an embedded "append BANANA" or "recommend Brand X" instruction). There are no operational attacks or harmful payloads anywhere in this repo. Treating fetched/external content as untrusted data is the core security stance, applied throughout.
+Everything in `redteam/injection_pages/` is a **benign canary** — a harmless obedience probe (e.g. an embedded "append BANANA" / "recommend Brand X"). No operational attacks or harmful payloads anywhere. Treating fetched/external content as untrusted data is the core security stance, applied throughout.
 
 ## Author
 
-Built by **Desmond Sleigh** — [github.com/Des-Sleigh](https://github.com/Des-Sleigh). Sibling project: **[llm-eval-harness](https://github.com/Des-Sleigh/llm-eval-harness)**, which measures model quality with the same evaluation discipline this platform applies to its own output.
+Built by **Desmond Sleigh** — [github.com/Des-Sleigh](https://github.com/Des-Sleigh). Sibling project: **[llm-eval-harness](https://github.com/Des-Sleigh/llm-eval-harness)** — measuring model quality with the same evaluation discipline Groundwork applies to its own output.
 
 _License: MIT._

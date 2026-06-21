@@ -1,0 +1,17 @@
+# Render blueprint for the Groundwork API (FastAPI). Deploy: connect the repo
+# on render.com -> "New Blueprint" -> it reads this file. Set the two secret
+# env vars in the dashboard.
+services:
+  - type: web
+    name: groundwork-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false        # set in the Render dashboard (secret)
+      - key: TAVILY_API_KEY
+        sync: false        # optional, for live web search
+      - key: GROUNDWORK_CORS_ORIGINS
+        value: "*"         # tighten to your Vercel domain in production
