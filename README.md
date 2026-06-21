@@ -50,10 +50,10 @@ Groundwork scores its own differentiators on labeled datasets ([`evals/`](evals/
 | Capability | Method | n | Precision | Recall | F1 | Accuracy |
 |---|---|---:|---:|---:|---:|---:|
 | Grounding | lexical heuristic | 30 | 0.86 | 1.00 | 0.92 | 0.90 |
-| Grounding | LLM entailment | 30 | _set a key to measure (higher)_ | | | |
+| Grounding | **LLM entailment** (claude-sonnet-4-6) | 30 | **1.00** | 0.94 | **0.97** | **0.97** |
 | Injection detection | regex pattern scan | 20 | 1.00 | 1.00 | 1.00 | 1.00 |
 
-The lexical grounder's precision (0.86) is the tell: it over-accepts paraphrased contradictions and overclaims that share vocabulary with a source — exactly the cases the LLM entailment path is built to catch.
+The lexical grounder over-accepts paraphrased contradictions and overclaims that share vocabulary with a source (precision 0.86). The LLM entailment grounder catches exactly those — **perfect precision, never accepting an unsupported claim**, at a small recall cost. That gap is the whole argument for grounding with a model rather than string overlap.
 
 Re-run: `python -m evals.run` (writes [`evals/report.md`](evals/report.md)).
 

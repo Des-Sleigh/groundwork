@@ -7,7 +7,7 @@ Measures Groundwork's grounding accuracy and injection-detection on labeled data
 | Method | n | Precision | Recall | F1 | Accuracy |
 |---|---:|---:|---:|---:|---:|
 | lexical heuristic | 30 | 0.86 | 1.00 | 0.92 | 0.90 |
-| LLM entailment | — | — | — | — | _set ANTHROPIC_API_KEY to measure_ |
+| LLM entailment (claude-sonnet-4-6) | 30 | 1.00 | 0.94 | 0.97 | 0.97 |
 
 ## Injection detection (manipulation attempt flagged?)
 
