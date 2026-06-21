@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     reports.mkdir(exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-    md = [f"# Research brief\n", f"**Question:** {question}\n", result["answer"], "",
+    md = ["# Research brief\n", f"**Question:** {question}\n", result["answer"], "",
           "## Run metadata", f"- Sub-tasks: {result['n_tasks']}, accepted: {result['n_accepted']}, "
           f"revised: {result['n_revised']}, rejected: {result['rejected_tasks']}",
           "", "### Cost by role", "```", result["cost_render"], "```"]
